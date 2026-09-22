@@ -611,7 +611,7 @@ var startGenerator = function () {
             }
         }
     };
-    worker.postMessage(numTangrams);
+    worker.postMessage({ count: numTangrams, seed: nextGenerationSeed() });
 };
 
 window.onload = function () {

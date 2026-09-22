@@ -1,5 +1,74 @@
 # Random Tangram Generator
 
+## TypeScript generation engine
+
+The reusable engine lives in `src/`, migrated from commit
+`3f9262d4eac426eb5813006039f4cd5583d904f1`. Use Node.js 20+:
+
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run build
+```
+
+`npm test` compares seeded generation, tan placements, outlines and evaluation
+against the original JavaScript and checks all six tan types in eight orientations.
+The build emits ESM and declarations under `dist/`, with no DOM or UI dependency.
+
+```ts
+import { generateTangrams, createRandom } from "./dist/generator.js";
+
+const tangrams = generateTangrams(10, index => console.log(index), createRandom(42));
+const vertices = tangrams[0].tans[0].getPoints().map(point => ({
+  x: point.toFloatX(), y: point.toFloatY(),
+}));
+```
+
+`createRandom(seed)` accepts an unsigned 32-bit integer (0–4294967295), including
+zero, and rejects invalid seeds. Omit the seed for normal random generation.
+Pass a fresh stream to replay a batch, or reuse a stream for a reproducible sequence
+of different batches. All engine choices, shuffles and retry paths use that stream;
+global `Math.random` is never replaced. The optional third argument preserves
+the existing count/progress API and also accepts a caller-provided `() => number`
+returning values in [0, 1).
+
+The package entry also exports `Tangram`, `Tan`, `Point` and `IntAdjoinSqrt2`.
+Generation is synchronous; run it inside a module worker in browser consumers.
+Progress is a zero-based generated index, before final sorting. Counts must be
+nonnegative safe integers. No difficulty filtering, adapter or worker protocol
+is included yet. Structured cloning drops class methods; convert to the data your
+consumer needs before posting a worker result. The legacy global numeric mode
+is still internal state, so progress callbacks must not re-enter generation.
+
+The standalone game and survey remain JavaScript in `Code/`. Open either page
+with `?seed=42` to reproduce generation and hint order. The first worker batch uses
+that seed; each regeneration increments it modulo 2³², independently of hints.
+Reloading resets both sequences. Missing/invalid URL seeds keep normal random play.
+The worker accepts `{ count, seed }` messages as well as the original numeric count.
+Tests cover both pages forwarding seeds, hint shuffling, worker/engine parity and
+204 generated puzzles compared with the legacy geometry implementation.
+
+Use the same inputs and action sequence for replay; seeding does not freeze clocks
+or telemetry, which tests should control separately. This PR changes legacy random
+plumbing, not its geometry or game rules. Telemetry and server code are unchanged.
+The historical documentation below describes that legacy application, not the new
+package. MIT attribution remains in `LICENSE`.
+
+### Preserved legacy defects
+
+- `IntAdjoinSqrt2.div` calculates but does not apply its denominator (2 / 2 gives
+  4); the test characterizes this instead of changing arithmetic during migration.
+- Scaling by zero returns `undefined`, and homogeneous point transformation uses
+  numeric comparison on coefficient objects.
+- Evaluation's hanging-piece/inner-touch loops used a point's `length` method as
+  a numeric bound and never ran. Their zero/false results remain unchanged.
+- `Tan.area()` constants differ from the area of its actual vertices.
+- Recursive generation retries have no global attempt limit. Consumers needing
+  cancellation should terminate their worker; bounded generation is follow-up work.
+
+These are separate correctness issues, not silently repaired here.
+
 Tangram is an old Chinese dissection puzzle. Seven puzzle pieces, called tans,
 have to be placed within a given shape in a way such that the entire shape is covered.
 This application randomly generates a large number of such shapes, orders them
@@ -217,8 +286,6 @@ load(file)
 ```
 (where `file` is the filename of the exported `.js`-File) in a `mongo` shell environment,
 as well as having both Node.js and MongoDB installed.
-
-
 
 
 
