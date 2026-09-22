@@ -1,5 +1,57 @@
 # Random Tangram Generator
 
+## TypeScript generation engine
+
+The reusable engine lives in `src/`, migrated from commit
+`3f9262d4eac426eb5813006039f4cd5583d904f1`. Use Node.js 20+:
+
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run build
+```
+
+`npm test` compares seeded generation, tan placements, outlines and evaluation
+against the original JavaScript and checks all six tan types in eight orientations.
+The build emits ESM and declarations under `dist/`, with no DOM or UI dependency.
+
+```ts
+import { generateTangrams } from "./dist/generator.js";
+
+const tangrams = generateTangrams(10, index => console.log(index));
+const vertices = tangrams[0].tans[0].getPoints().map(point => ({
+  x: point.toFloatX(), y: point.toFloatY(),
+}));
+```
+
+The package entry also exports `Tangram`, `Tan`, `Point` and `IntAdjoinSqrt2`.
+Generation is synchronous; run it inside a module worker in browser consumers.
+Progress is a zero-based generated index, before final sorting. Counts must be
+nonnegative safe integers. No difficulty filtering, adapter or worker protocol
+is included yet. Structured cloning drops class methods; convert to the data your
+consumer needs before posting a worker result. The legacy global numeric mode
+is still internal state, so progress callbacks must not re-enter generation.
+
+`Code/` and the standalone game, survey, telemetry and server remain unchanged
+JavaScript. They are retained for their original UI and as regression references;
+new engine changes belong in `src/`. The historical documentation below describes
+that legacy application, not the new package. MIT attribution remains in `LICENSE`.
+
+### Preserved legacy defects
+
+- `IntAdjoinSqrt2.div` calculates but does not apply its denominator (2 / 2 gives
+  4); the test characterizes this instead of changing arithmetic during migration.
+- Scaling by zero returns `undefined`, and homogeneous point transformation uses
+  numeric comparison on coefficient objects.
+- Evaluation's hanging-piece/inner-touch loops used a point's `length` method as
+  a numeric bound and never ran. Their zero/false results remain unchanged.
+- `Tan.area()` constants differ from the area of its actual vertices.
+- Recursive generation retries have no global attempt limit. Consumers needing
+  cancellation should terminate their worker; bounded generation is follow-up work.
+
+These are separate correctness issues, not silently repaired here.
+
 Tangram is an old Chinese dissection puzzle. Seven puzzle pieces, called tans,
 have to be placed within a given shape in a way such that the entire shape is covered.
 This application randomly generates a large number of such shapes, orders them
@@ -217,7 +269,6 @@ load(file)
 ```
 (where `file` is the filename of the exported `.js`-File) in a `mongo` shell environment,
 as well as having both Node.js and MongoDB installed.
-
 
 
 
