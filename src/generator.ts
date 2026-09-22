@@ -5,6 +5,7 @@ import { compareLineSegments, LineSegment } from "./lineSegement.js";
 import { Directions, SegmentDirections, numOrientations } from "./directions.js";
 import { getAllPoints, computeBoundingBox, containsPoint, Tan } from "./tan.js";
 import { compareTangrams, Tangram } from "./tangram.js";
+import { createRandom } from "./random.js";
 
 var range = new IntAdjoinSqrt2(50, 0);
 
@@ -73,16 +74,16 @@ const checkNewTan = function(currentTans: Tan[], newTan: Tan) {
     return true;
 };
 
-const generateTangram = function(): Tangram {
+const generateTangram = function(random: () => number): Tangram {
     /* Generate an order in which the tan pieces are to be placed and an orientation
      * for each piece */
-    var flipped = Math.floor(Math.random() * 2);
+    var flipped = Math.floor(random() * 2);
     var tanOrder = [0, 0, 1, 2, 2, 3, 4 + flipped];
     console.log(tanOrder);
-    tanOrder = shuffleArray(tanOrder);
+    tanOrder = shuffleArray(tanOrder, random);
     var orientations = [];
     for (var tanId = 0; tanId < 7; tanId++) {
-        orientations[tanId] = Math.floor((Math.random() * numOrientations));
+        orientations[tanId] = Math.floor((random() * numOrientations));
     }
     /* Place the first tan, as defined in tanOrder, at the center the drawing space */
     var tans = [];
@@ -96,12 +97,12 @@ const generateTangram = function(): Tangram {
         var tanPlaced = false;
         var counter = 0;
         while (!tanPlaced) {
-            anchor = allPoints[Math.floor(Math.random() * allPoints.length)].dup();
+            anchor = allPoints[Math.floor(random() * allPoints.length)].dup();
             /* Try each possible point of the new tan as a connecting points and
              * take the first one that does not result in an overlap */
             var pointId = 0;
             var pointOrder = (tanOrder[tanId] < 3) ? [0, 1, 2] : [0, 1, 2, 3];
-            pointOrder = shuffleArray(pointOrder);
+            pointOrder = shuffleArray(pointOrder, random);
             do {
                 var newTan;
                 /* If the connecting point is not the anchor, the anchor position
@@ -126,7 +127,7 @@ const generateTangram = function(): Tangram {
             counter++;
             if (counter > 100) {
                 console.log("Infinity loop!");
-                return generateTangram();
+                return generateTangram(random);
             }
         }
     }
@@ -172,9 +173,9 @@ const computeOrientationProbability = function(tans: Tan[], point: Point, tanTyp
     return normalizeProbability(distribution);
 };
 
-const sampleOrientation = function(distribution: number[]) {
+const sampleOrientation = function(distribution: number[], random: () => number) {
     /* Generate value between 0 and 1 */
-    var sample = Math.random();
+    var sample = random();
     /* Successively compute accumulated distribution and return if sample is
      * smaller than the accumulated value -> then falls into the interval for
      * that index */
@@ -215,13 +216,13 @@ const updateSegments = function(currentSegments: LineSegment[], newTan: Tan) {
     return allSegments;
 };
 
-const generateTangramEdges = function(): Tangram {
+const generateTangramEdges = function(random: () => number): Tangram {
     /* Generate an order in which the tan pieces are to be placed and decide on
      * whether the parallelogram is flipped or not */
-    var flipped = Math.floor(Math.random() * 2);
+    var flipped = Math.floor(random() * 2);
     var tanOrder = [0, 0, 1, 2, 2, 3, 4 + flipped];
-    tanOrder = shuffleArray(tanOrder);
-    var orientation = Math.floor((Math.random() * numOrientations));
+    tanOrder = shuffleArray(tanOrder, random);
+    var orientation = Math.floor((random() * numOrientations));
     /* Place the first tan, as defined in tanOrder, at the center the drawing space
      * with the just sampled orientation */
     var tans = [];
@@ -234,11 +235,11 @@ const generateTangramEdges = function(): Tangram {
         var counter = 0;
         while (!tanPlaced) {
             /* Choose point at which new tan is to be attached */
-            anchor = allPoints[Math.floor(Math.random() * allPoints.length)].dup();
+            anchor = allPoints[Math.floor(random() * allPoints.length)].dup();
             /* Choose point of the new tan that will be attached to that point */
             var pointId = 0;
             var pointOrder = (tanOrder[tanId] < 3) ? [0, 1, 2] : [0, 1, 2, 3];
-            pointOrder = shuffleArray(pointOrder);
+            pointOrder = shuffleArray(pointOrder, random);
             do {
                 var newTan;
                 /* Compute probability distribution for orientations */
@@ -246,7 +247,7 @@ const generateTangramEdges = function(): Tangram {
                     tanOrder[tanId], pointOrder[pointId], allSegments);
                 /* Sample a new orientation */
                 while (typeof orientationDistribution != 'undefined' && !tanPlaced) {
-                    orientation = sampleOrientation(orientationDistribution);
+                    orientation = sampleOrientation(orientationDistribution, random);
                     if (pointOrder[pointId] === 0) {
                         newTan = new Tan(tanOrder[tanId], anchor, orientation);
                     } else {
@@ -271,19 +272,19 @@ const generateTangramEdges = function(): Tangram {
             /* Try again - can this ever happen? */
             if (counter > 100) {
                 console.log("Infinity loop!");
-                return generateTangramEdges();
+                return generateTangramEdges(random);
             }
         }
     }
     return new Tangram(tans);
 };
-export function generateTangrams(count: number, onProgress?: (index: number) => void): Tangram[] {
+export function generateTangrams(count: number, onProgress?: (index: number) => void, random = createRandom()): Tangram[] {
     if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Count must be a nonnegative safe integer");
     setGenerating(true);
     try {
         const generated: Tangram[] = [];
         for (let index = 0; index < count; index++) {
-            const tangram = generateTangramEdges();
+            const tangram = generateTangramEdges(random);
             generated.push(tangram);
             onProgress?.(index);
             for (const tan of tangram.tans) { delete tan.points; delete tan.segments; delete tan.insidePoints; }
@@ -295,3 +296,4 @@ export { Tangram } from "./tangram.js";
 export { Tan } from "./tan.js";
 export { Point } from "./point.js";
 export { IntAdjoinSqrt2 } from "./intadjoinsqrt2.js";
+export { createRandom } from "./random.js";

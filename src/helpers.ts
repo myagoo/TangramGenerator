@@ -1,4 +1,6 @@
 
+import { createRandom } from "./random.js";
+
 export let generating = true;
 
 export const toRadians = function(degrees: number) {
@@ -45,13 +47,13 @@ export const crossProduct3D = function(a: number[], b: number[]) {
     return result;
 };
 
-export const shuffleArray = function <T>(array: T[]) {
+export const shuffleArray = function <T>(array: T[], random = createRandom()) {
     var elementsLeft = array.length;
     var elementCopy, index;
     /* while there are still element left */
     while (elementsLeft) {
         /* Pick one of the remaining elements (index between 0 and elementsLeft -1 */
-        index = Math.floor(Math.random() * elementsLeft);
+        index = Math.floor(random() * elementsLeft);
         elementsLeft--;
         /* Switch the chosen element with the one at index elementsLeft, this
          * results in filling the array with randomly chosen elements from the back */

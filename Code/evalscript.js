@@ -196,7 +196,7 @@ var startGenerator = function () {
             updateLoading((message + 1) / numTangrams);
         }
     };
-    worker.postMessage(numTangrams);
+    worker.postMessage({ count: numTangrams, seed: nextGenerationSeed() });
 };
 
 window.onload = function () {

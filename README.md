@@ -17,13 +17,21 @@ against the original JavaScript and checks all six tan types in eight orientatio
 The build emits ESM and declarations under `dist/`, with no DOM or UI dependency.
 
 ```ts
-import { generateTangrams } from "./dist/generator.js";
+import { generateTangrams, createRandom } from "./dist/generator.js";
 
-const tangrams = generateTangrams(10, index => console.log(index));
+const tangrams = generateTangrams(10, index => console.log(index), createRandom(42));
 const vertices = tangrams[0].tans[0].getPoints().map(point => ({
   x: point.toFloatX(), y: point.toFloatY(),
 }));
 ```
+
+`createRandom(seed)` accepts an unsigned 32-bit integer (0–4294967295), including
+zero, and rejects invalid seeds. Omit the seed for normal random generation.
+Pass a fresh stream to replay a batch, or reuse a stream for a reproducible sequence
+of different batches. All engine choices, shuffles and retry paths use that stream;
+global `Math.random` is never replaced. The optional third argument preserves
+the existing count/progress API and also accepts a caller-provided `() => number`
+returning values in [0, 1).
 
 The package entry also exports `Tangram`, `Tan`, `Point` and `IntAdjoinSqrt2`.
 Generation is synchronous; run it inside a module worker in browser consumers.
@@ -33,10 +41,19 @@ is included yet. Structured cloning drops class methods; convert to the data you
 consumer needs before posting a worker result. The legacy global numeric mode
 is still internal state, so progress callbacks must not re-enter generation.
 
-`Code/` and the standalone game, survey, telemetry and server remain unchanged
-JavaScript. They are retained for their original UI and as regression references;
-new engine changes belong in `src/`. The historical documentation below describes
-that legacy application, not the new package. MIT attribution remains in `LICENSE`.
+The standalone game and survey remain JavaScript in `Code/`. Open either page
+with `?seed=42` to reproduce generation and hint order. The first worker batch uses
+that seed; each regeneration increments it modulo 2³², independently of hints.
+Reloading resets both sequences. Missing/invalid URL seeds keep normal random play.
+The worker accepts `{ count, seed }` messages as well as the original numeric count.
+Tests cover both pages forwarding seeds, hint shuffling, worker/engine parity and
+204 generated puzzles compared with the legacy geometry implementation.
+
+Use the same inputs and action sequence for replay; seeding does not freeze clocks
+or telemetry, which tests should control separately. This PR changes legacy random
+plumbing, not its geometry or game rules. Telemetry and server code are unchanged.
+The historical documentation below describes that legacy application, not the new
+package. MIT attribution remains in `LICENSE`.
 
 ### Preserved legacy defects
 
@@ -269,7 +286,6 @@ load(file)
 ```
 (where `file` is the filename of the exported `.js`-File) in a `mongo` shell environment,
 as well as having both Node.js and MongoDB installed.
-
 
 
 

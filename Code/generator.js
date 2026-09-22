@@ -74,13 +74,13 @@ var checkNewTan = function (currentTans, newTan) {
 var generateTangram = function () {
     /* Generate an order in which the tan pieces are to be placed and an orientation
      * for each piece */
-    var flipped = Math.floor(Math.random() * 2);
+    var flipped = Math.floor(randomValue() * 2);
     var tanOrder = [0, 0, 1, 2, 2, 3, 4 + flipped];
     console.log(tanOrder);
     tanOrder = shuffleArray(tanOrder);
     var orientations = [];
     for (var tanId = 0; tanId < 7; tanId++) {
-        orientations[tanId] = Math.floor((Math.random() * numOrientations));
+        orientations[tanId] = Math.floor((randomValue() * numOrientations));
     }
     /* Place the first tan, as defined in tanOrder, at the center the drawing space */
     var tans = [];
@@ -94,7 +94,7 @@ var generateTangram = function () {
         var tanPlaced = false;
         var counter = 0;
         while (!tanPlaced) {
-            anchor = allPoints[Math.floor(Math.random() * allPoints.length)].dup();
+            anchor = allPoints[Math.floor(randomValue() * allPoints.length)].dup();
             /* Try each possible point of the new tan as a connecting points and
              * take the first one that does not result in an overlap */
             var pointId = 0;
@@ -178,7 +178,7 @@ var computeOrientationProbability = function (tans, point, tanType, pointId, all
 /* Assumes that the sum of all values in distribution is 1 */
 var sampleOrientation = function (distribution) {
     /* Generate value between 0 and 1 */
-    var sample = Math.random();
+    var sample = randomValue();
     /* Successively compute accumulated distribution and return if sample is
      * smaller than the accumulated value -> then falls into the interval for
      * that index */
@@ -227,10 +227,10 @@ var updateSegments = function (currentSegments, newTan) {
 var generateTangramEdges = function () {
     /* Generate an order in which the tan pieces are to be placed and decide on
      * whether the parallelogram is flipped or not */
-    var flipped = Math.floor(Math.random() * 2);
+    var flipped = Math.floor(randomValue() * 2);
     var tanOrder = [0, 0, 1, 2, 2, 3, 4 + flipped];
     tanOrder = shuffleArray(tanOrder);
-    var orientation = Math.floor((Math.random() * numOrientations));
+    var orientation = Math.floor((randomValue() * numOrientations));
     /* Place the first tan, as defined in tanOrder, at the center the drawing space
      * with the just sampled orientation */
     var tans = [];
@@ -243,7 +243,7 @@ var generateTangramEdges = function () {
         var counter = 0;
         while (!tanPlaced) {
             /* Choose point at which new tan is to be attached */
-            anchor = allPoints[Math.floor(Math.random() * allPoints.length)].dup();
+            anchor = allPoints[Math.floor(randomValue() * allPoints.length)].dup();
             /* Choose point of the new tan that will be attached to that point */
             var pointId = 0;
             var pointOrder = (tanOrder[tanId] < 3) ? [0, 1, 2] : [0, 1, 2, 3];
@@ -322,6 +322,13 @@ self.addEventListener('message', function (event) {
     var message = event.data;
     if (message === 'Evaluation'){
         eval = true;
+    }
+    if (message !== null && typeof message === 'object') {
+        if (!Number.isSafeInteger(message.count) || message.count < 0) {
+            throw new RangeError("Count must be a nonnegative safe integer");
+        }
+        randomValue = createRandom(message.seed);
+        message = message.count;
     }
     self.postMessage("Worker started!");
     generateTangrams(message);

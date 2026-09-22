@@ -2,6 +2,28 @@
 var generating = true;
 var eval = false;
 
+/* Same unsigned 32-bit stream as the TypeScript engine; never use for secrets. */
+var createRandom = function (seed) {
+    if (seed === undefined) return Math.random;
+    if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+        throw new RangeError("Seed must be an unsigned 32-bit integer");
+    }
+    var state = seed;
+    return function () {
+        state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+        return state / 4294967296;
+    };
+};
+var seedParam = typeof location === "undefined" ? null : new URLSearchParams(location.search).get("seed");
+var gameSeed = seedParam !== null && /^\d+$/.test(seedParam) && Number(seedParam) <= 0xffffffff
+    ? Number(seedParam) : undefined;
+var randomValue = createRandom(gameSeed);
+/* Worker batches advance independently of hints and restart on page reload. */
+var generationBatch = 0;
+var nextGenerationSeed = function () {
+    return gameSeed === undefined ? undefined : (gameSeed + generationBatch++) >>> 0;
+};
+
 /* Conversion between different angle systems */
 var toRadians = function (degrees) {
     return degrees * Math.PI / 180.0;
@@ -64,7 +86,7 @@ var shuffleArray = function (array) {
     /* while there are still element left */
     while (elementsLeft) {
         /* Pick one of the remaining elements (index between 0 and elementsLeft -1 */
-        index = Math.floor(Math.random() * elementsLeft);
+        index = Math.floor(randomValue() * elementsLeft);
         elementsLeft--;
         /* Switch the chosen element with the one at index elementsLeft, this
          * results in filling the array with randomly chosen elements from the back */
@@ -113,6 +135,5 @@ var numUniqueElements = function (array, compareFunction) {
     var unique = eliminateDuplicates(array.slice(0), compareFunction, true);
     return array.length;
 };
-
 
 
